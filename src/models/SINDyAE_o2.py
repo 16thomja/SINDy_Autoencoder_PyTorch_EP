@@ -10,7 +10,7 @@ class Net(nn.Module):
         
         self.z_dim = args.z_dim
         self.u_dim = args.u_dim
-        self.hidden_dim = args.hidden_dim
+        self.hidden_dims = args.hidden_dims
         self.poly_order = args.poly_order
         self.use_sine = args.use_sine
         self.include_constant = args.include_constant
@@ -18,46 +18,47 @@ class Net(nn.Module):
         self.mse = nn.MSELoss(reduction='mean')
         self.nonlinearity = args.nonlinearity
         
-        self.encoder = self.build_net(self.u_dim, self.hidden_dim, self.z_dim)
-        self.decoder = self.build_net(self.z_dim, self.hidden_dim, self.u_dim)
+        self.encoder = self.build_net(self.u_dim, self.hidden_dims, self.z_dim)
+        self.decoder = self.build_net(self.z_dim, self.hidden_dims[::-1], self.u_dim)
         self.sindy_coefficients = nn.Parameter(torch.randn(self.library_dim, self.z_dim, requires_grad=True))
         nn.init.xavier_normal_(self.sindy_coefficients)
         self.sequential_threshold = args.sequential_threshold
         self.threshold_mask = nn.Parameter(torch.ones_like(self.sindy_coefficients), requires_grad=False)
         
 
-    def forward(self, x, dx, lambdas):
+    def forward(self, x, dx, ddx, lambdas):
         batch_size, T, _ = x.shape
         device = self.sindy_coefficients.device
         
         # reshape data to be (b * t) x u
         x = x.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
-        dx = dx.view(-1, self.u_dim).type(torch.FloatTensor).to(device)        
+        dx = dx.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
+        ddx = ddx.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
         
         # encode and decode
         z = self.encoder(x)
         x_recon = self.decoder(z)
+
+        # propogate known derivatives through encoder to get dz, ddz
+        dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)
         
         # build the SINDy library using the latent vector
-        theta = sindy_library(z, self.poly_order, device, self.use_sine, self.include_constant) # (b * T) x 20
+        theta = sindy_library(z, dz, self.poly_order, device, self.use_sine, self.include_constant)
         
-        # calculate the z derivative
-        dz = self.get_derivative(x, dx, self.encoder)
+        # predict the second derivative of z using the library
+        ddz_pred = self.predict(theta)
         
-        # predict the z derivative using the library
-        dz_pred = self.predict(theta)
-        
-        # predict the derivative of dx by using the predicted z derivative
-        dx_pred = self.get_derivative(z, dz_pred, self.decoder)
+        # use SINDy prediction to predict full-space dynamics
+        dx_pred, ddx_pred = self.get_derivative_order2(z, dz, ddz_pred, self.decoder)
                 
         # calculate loss
-        loss = self.loss_func(x, x_recon, dx_pred, dz_pred, dx, dz, lambdas)
+        loss = self.loss_func(x, x_recon, ddx_pred, ddz_pred, ddx, ddz, lambdas)
         
         return loss
         
 
     def predict(self, theta):
-        # sindy_coefficients: L x z
+        # sindy_coefficients: library_dim X z_dim
         theta = theta.unsqueeze(1) # (b * T) x L  --->   (b * T) x 1 x L
         masked_coeffs = self.sindy_coefficients * self.threshold_mask
         return torch.matmul(theta, masked_coeffs).squeeze() # (b x T) x z
@@ -164,44 +165,44 @@ class Net(nn.Module):
                 dz = torch.matmul(dz, wT)
                 ddz = torch.matmul(ddz, wT)
 
-        dz = d_layer_output * torch.matmul(dz, wT)
-        ddz = dd_layer_output * torch.matmul(ddz, wT)
+        dz = torch.matmul(dz, net[-1].weight.T)
+        ddz = torch.matmul(ddz, net[-1].weight.T)
         return dz, ddz
 
 
-    def loss_func(self, x, x_recon, dx_pred, dz_pred, dx, dz, lambdas):
+    def loss_func(self, x, x_recon, ddx_pred, ddz_pred, ddx, ddz, lambdas):
         # reconstruction loss
         l_recon = self.mse(x_recon, x)
         
-        # SINDy loss in dx
-        l_dx = lambdas[0] * self.mse(dx_pred, dx)
+        # SINDy loss in ddx
+        l_ddx = lambdas[0] * self.mse(ddx_pred, ddx)
         
-        # SINDy loss in dz
-        l_dz = lambdas[1] * self.mse(dz_pred, dz)
+        # SINDy loss in ddz
+        l_ddz = lambdas[1] * self.mse(ddz_pred, ddz)
         
         # SINDy regularization
         l_reg = lambdas[2] * torch.abs(self.sindy_coefficients).mean()
         
-        return l_recon, l_dx, l_dz, l_reg
+        return l_recon, l_ddx, l_ddz, l_reg
 
 
-    def build_net(self, in_dim, hidden_dim, out_dim):
+    def build_net(self, in_dim, hidden_dims, out_dim):
+        layer_sizes = [in_dim] + hidden_dims + [out_dim]
+
         if self.nonlinearity == 'elu':
-            nonlinearity = nn.ELU
+            act = nn.ELU
         elif self.nonlinearity == 'sig':
-            nonlinearity = nn.Sigmoid
+            act = nn.Sigmoid
         elif self.nonlinearity == 'relu':
-            nonlinearity =  nn.ReLU
-        else:  # no nonlinearity 
-            return nn.Sequential(
-                nn.Linear(in_dim, hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.Linear(hidden_dim, out_dim)
-            )
-        return nn.Sequential(
-            nn.Linear(in_dim, hidden_dim),
-            nonlinearity(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nonlinearity(),
-            nn.Linear(hidden_dim, out_dim)
-        )
+            act = nn.ReLU
+        else:
+            act = None
+
+        layers = []
+        for i in range(len(layer_sizes) - 1):
+            layers.append(nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
+            # only add activation if requested and not the last layer
+            if act is not None and i < len(layer_sizes) - 2:
+                layers.append(act())
+
+        return nn.Sequential(*layers)

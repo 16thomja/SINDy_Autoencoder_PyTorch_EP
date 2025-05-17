@@ -63,7 +63,7 @@ def main():
         net.apply(init_weights)
 
     # lambdas for loss function
-    lambdas = args.lambda_dx, args.lambda_dz, args.lambda_reg
+    lambdas = args.lambda_ddx, args.lambda_ddz, args.lambda_reg
 
     # for each epoch
     for epoch in tqdm(range(args.epochs), desc="Epoch", total=args.epochs, dynamic_ncols=True):

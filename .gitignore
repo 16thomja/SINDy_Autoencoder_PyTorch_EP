@@ -1,0 +1,17 @@
+data/*
+!data/
+!data/README.md
+
+experiments/*
+!experiments/
+!experiments/README.md
+
+tb_runs/*
+!tb_runs/
+!tb_runs/README.md
+
+trained_models/*
+!trained_models/
+!trained_models/README.md
+
+__pycache__/

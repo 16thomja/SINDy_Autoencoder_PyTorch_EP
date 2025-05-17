@@ -1,0 +1,11 @@
+--session_name 05-17-2025_0
+--train_initial_conds 200
+--val_initial_conds 20
+--test_initial_conds 20
+--timesteps 500
+--hidden_dims 256 128 64
+--batch_size 64
+--epochs 100
+--lambda_ddx 0
+--lambda_ddz 0
+--lambda_reg 0

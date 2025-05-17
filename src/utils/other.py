@@ -2,11 +2,11 @@ from src.dataset.Datasets import *
 
 def load_data(args):
     # train and val data (using val as "test" data)
-    if args.data_set == "lorenz":
-        folder, data_paths = get_lorenz_path()
-        train_set = LorenzDataset(args, data_paths[0])
-        val_set = LorenzDataset(args, data_paths[1])
-        test_set = LorenzDataset(args, data_paths[2])
+    folder, data_paths = get_data_paths()
+    train_set = ElasticPendulumDataset(args, data_paths[0])
+    val_set = ElasticPendulumDataset(args, data_paths[1])
+    test_set = ElasticPendulumDataset(args, data_paths[2])
+
     return train_set, val_set, test_set
 
 def load_model(net, cp_path, device, optim=None, scheduler=None):
@@ -18,17 +18,19 @@ def load_model(net, cp_path, device, optim=None, scheduler=None):
     if scheduler is not None:
         scheduler.load_state_dict(checkpoint['scheduler'])
     initial_e = checkpoint['epoch']
+
     return net, optim, scheduler, initial_e
 
 def make_model(args):
-    if args.model == 'SINDyAE':
-        from src.models.SINDyAE import Net
-    if args.model == 'SINDyVAE':
-        from src.models.SINDyVAE import Net
+    if args.model == 'SINDyAE_o2':
+        from src.models.SINDyAE_o2 import Net
+    if args.model == 'SINDyConvAE_o2':
+        from src.models.SINDyConvAE_o2 import Net
+
     return Net(args)
 
-def get_lorenz_path():
-    folder = "data/lorenz/"
+def get_data_paths():
+    folder = "data/elastic_pendulum/"
     return folder, (folder + "train.npy", folder + "val.npy", folder + "test.npy")
 
 def get_general_path(args):
@@ -39,7 +41,7 @@ def get_checkpoint_path(args):
     return cp_folder + 'checkpoint.pt', cp_folder
 
 def get_args_path(args):
-    args_folder = args.model_folder +get_general_path(args)
+    args_folder = args.model_folder + get_general_path(args)
     return args_folder + "args.txt", args_folder
 
 def get_tb_path(args):
