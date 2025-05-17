@@ -1,4 +1,5 @@
 --session_name 05-17-2025_0
+--model SINDyAE_o2
 --train_initial_conds 200
 --val_initial_conds 20
 --test_initial_conds 20

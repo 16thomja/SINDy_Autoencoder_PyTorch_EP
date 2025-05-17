@@ -19,7 +19,7 @@ def train(net, train_loader, train_board, optim, epoch, clip, lambdas):
         epoch_l_reg += l_reg.item()
 
         # backprop
-        batch_loss = (l_recon + l_ddx + l_ddz + l_reg) / len(x)
+        batch_loss = l_recon + l_ddx + l_ddz + l_reg
         optim.zero_grad()
         batch_loss.backward()
         if clip is not None:
