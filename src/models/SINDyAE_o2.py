@@ -11,16 +11,25 @@ class Net(nn.Module):
         self.z_dim = args.z_dim
         self.u_dim = args.u_dim
         self.hidden_dims = args.hidden_dims
-        self.poly_order = args.poly_order
+        self.use_inverse = args.use_inverse
         self.use_sine = args.use_sine
+        self.use_cosine = args.use_cosine
+        self.poly_order = args.poly_order
         self.include_constant = args.include_constant
-        self.library_dim = library_size(self.z_dim, self.poly_order, use_sine=self.use_sine, include_constant=self.include_constant)
+        self.library_dim = library_size(
+            self.z_dim, 
+            self.poly_order, 
+            use_inverse=self.use_inverse,
+            use_sine=self.use_sine,
+            use_cosine=self.use_cosine,
+            include_constant=self.include_constant
+        )
         self.mse = nn.MSELoss(reduction='mean')
         self.nonlinearity = args.nonlinearity
         
         self.encoder = self.build_net(self.u_dim, self.hidden_dims, self.z_dim)
         self.decoder = self.build_net(self.z_dim, self.hidden_dims[::-1], self.u_dim)
-        self.sindy_coefficients = nn.Parameter(torch.randn(self.library_dim, self.z_dim, requires_grad=True))
+        self.sindy_coefficients = nn.Parameter(torch.zeros(self.library_dim, self.z_dim, requires_grad=True))
         nn.init.xavier_normal_(self.sindy_coefficients)
         self.sequential_threshold = args.sequential_threshold
         self.threshold_mask = nn.Parameter(torch.ones_like(self.sindy_coefficients), requires_grad=False)
@@ -43,7 +52,7 @@ class Net(nn.Module):
         dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)
         
         # build the SINDy library using the latent vector
-        theta = sindy_library(z, dz, self.poly_order, device, self.use_sine, self.include_constant)
+        theta = sindy_library(z, dz, self.poly_order, device, self.use_inverse, self.use_sine, self.use_cosine, self.include_constant)
         
         # predict the second derivative of z using the library
         ddz_pred = self.predict(theta)
@@ -90,7 +99,8 @@ class Net(nn.Module):
             elif self.nonlinearity == 'relu':
                 # derivative of relu(x): 1 if x > 0, else 0
                 layer_output = nn.functional.relu(output_before_act)
-                d_layer_output = (output_before_act > 1).float()
+                #d_layer_output = (output_before_act > 1).float()
+                d_layer_output = (output_before_act > 0).float()
 
             elif self.nonlinearity == 'elu':
                 # derivative of elu(x): 1 if x > 0, else alpha * exp(x). we use alpha = 1.0 by default
@@ -101,6 +111,7 @@ class Net(nn.Module):
                 # no activation function
                 d_layer_output = 1
             dz = d_layer_output * torch.matmul(dz, wT)
+            
         return torch.matmul(dz, net[-1].weight.T)
 
     
@@ -147,7 +158,8 @@ class Net(nn.Module):
             
             elif self.nonlinearity == 'relu':
                 layer_output = nn.functional.relu(output_before_act)
-                d_layer_output = (output_before_act > 1).float()
+                #d_layer_output = (output_before_act > 1).float()
+                d_layer_output = (output_before_act > 0).float()
                 dz = d_layer_output * torch.matmul(dz, wT)
                 ddz = d_layer_output * torch.matmul(ddz, wT)
             
@@ -167,6 +179,7 @@ class Net(nn.Module):
 
         dz = torch.matmul(dz, net[-1].weight.T)
         ddz = torch.matmul(ddz, net[-1].weight.T)
+
         return dz, ddz
 
 

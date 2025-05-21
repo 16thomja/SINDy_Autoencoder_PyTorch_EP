@@ -10,9 +10,30 @@ def main():
     args = parse_args()
     
     # create data
-    train_data = get_elastic_pendulum_data(n_ics=args.train_initial_conds, timesteps=args.timesteps)
-    val_data = get_elastic_pendulum_data(n_ics=args.val_initial_conds, timesteps=args.timesteps)
-    test_data = get_elastic_pendulum_data(n_ics=args.test_initial_conds, timesteps=args.timesteps)
+    train_data = get_elastic_pendulum_data(
+        n_ics=args.train_initial_conds, 
+        timesteps=args.timesteps,
+        k=args.spring_constant,
+        m=args.mass,
+        L=args.natural_length,
+        g=args.gravitational_acceleration
+    )
+    val_data = get_elastic_pendulum_data(
+        n_ics=args.train_initial_conds, 
+        timesteps=args.timesteps,
+        k=args.spring_constant,
+        m=args.mass,
+        L=args.natural_length,
+        g=args.gravitational_acceleration
+    )
+    test_data = get_elastic_pendulum_data(
+        n_ics=args.train_initial_conds, 
+        timesteps=args.timesteps,
+        k=args.spring_constant,
+        m=args.mass,
+        L=args.natural_length,
+        g=args.gravitational_acceleration
+    )
 
     # save data
     folder, data_paths = get_data_paths()

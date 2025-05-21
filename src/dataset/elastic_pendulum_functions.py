@@ -2,8 +2,8 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 
-def get_elastic_pendulum_data(n_ics, timesteps):
-    t,x,dx,ddx,z = generate_elastic_pendulum_data(n_ics, timesteps)
+def get_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
+    t,x,dx,ddx,z = generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g)
     data = {}
     data['t'] = t
     data['x'] = x.reshape((n_ics*t.size, -1))
@@ -15,7 +15,7 @@ def get_elastic_pendulum_data(n_ics, timesteps):
     return data
 
 
-def generate_elastic_pendulum_data(n_ics, timesteps, k=24.0, m=1.0, L=1.0, g=9.81):
+def generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
     def f(t, z):
         r, theta, r_dot, theta_dot = z
         r_ddot = r * theta_dot**2 + (k / m) * (L - r) + g * np.cos(theta)

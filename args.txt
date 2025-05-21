@@ -1,4 +1,4 @@
---session_name 05-17-2025_0
+--session_name 05-21-2025_0
 --model SINDyAE_o2
 --train_initial_conds 200
 --val_initial_conds 20
@@ -6,7 +6,8 @@
 --timesteps 500
 --hidden_dims 256 128 64
 --batch_size 64
---epochs 100
---lambda_ddx 0
+--epochs 500
+--lambda_ddx 1e-9
 --lambda_ddz 0
 --lambda_reg 0
+--clip 1.0

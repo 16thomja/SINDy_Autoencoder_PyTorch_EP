@@ -1,6 +1,19 @@
 import torch
 from tqdm import tqdm
 
+def normalize(img):
+    img = torch.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
+
+    mn = img.min()
+    mx = img.max()
+    if mx > mn:
+        # Normal case: spread into [0,1]
+        img = (img - mn) / (mx - mn)
+    else:
+        # All pixels identical: just make a zero image
+        img = torch.zeros_like(img)
+    return img
+
 def train(net, train_loader, train_board, optim, epoch, clip, lambdas):
     net.train()
 
@@ -67,9 +80,8 @@ def test(net, test_loader, test_board, epoch, timesteps, lambdas):
             input_sample = x[0].view(1, 51, 51)
             reconstructed_sample = reconstructed[0].view(1, 51, 51)
 
-            # normalize brightness to [0, 1]
-            input_sample = (input_sample - input_sample.min()) / (input_sample.max() - input_sample.min())
-            reconstructed_sample = (reconstructed_sample - reconstructed_sample.min()) / (reconstructed_sample.max() - reconstructed_sample.min())
+            input_sample = normalize(input_sample)
+            reconstructed_sample = normalize(reconstructed_sample)
 
             test_board.add_image('Input Sample', input_sample, epoch, dataformats='CHW')
             test_board.add_image('Reconstructed Sample', reconstructed_sample, epoch, dataformats='CHW')  

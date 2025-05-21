@@ -47,7 +47,7 @@ def main():
     net.load_state_dict(checkpoint['model'])
     net.to(device)
 
-    x = test_set.x[0].view(-1, net.u_dim).type(torch.FloatTensor).to(device)
+    x = test_set.x[5].view(-1, net.u_dim).type(torch.FloatTensor).to(device)
 
     with torch.no_grad():
         x_recon = net.decoder(net.encoder(x))

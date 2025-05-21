@@ -19,8 +19,10 @@ def parse_args():
     parser.add_argument('-Z', '--z_dim', default=2, type=int, help="Size of latent vector")
     parser.add_argument('-U',  '--u_dim', default=2601, type=int, help="Sise of u vector in Elastic Pendulum data")
     parser.add_argument('-HD', '--hidden_dims', default=[128, 64, 32], type=int, nargs='+', help="Dimensions of hidden layers in FC autoencoder")
+    parser.add_argument('-UI', '--use_inverse', default=True, type=bool, help="Iff true, includes inverse of state in library")
+    parser.add_argument('-US', '--use_sine', default=True, type=bool, help="Iff true, includes sine of state in library")
+    parser.add_argument('-UC', '--use_cosine', default=True, type=bool, help="Iff true, includes cosine of state in library")
     parser.add_argument('-PO', '--poly_order', default=3, type=str, help="Highest polynomial degree to include in library")
-    parser.add_argument('-US', '--use_sine', default=True, type=bool, help="Iff true, includes sine function in library")
     parser.add_argument('-IC', '--include_constant', default=True, type=bool, help="Iff true, includes constant term in library")
     parser.add_argument('-NL', '--nonlinearity', default='elu', type=str, help="Nonlinearity to use in autoencoder (elu, sig, relu, None)")
     
@@ -39,6 +41,10 @@ def parse_args():
     parser.add_argument('-ST', '--sequential_threshold', default=5e-2, type=float, help="Sequential thresholding value for coefficients")
 
     # dataset parameters
+    parser.add_argument('-K', '--spring_constant', default=24.0, type=float, help='Spring constant in simulation')
+    parser.add_argument('-MA', '--mass', default=1.0, type=float, help='Mass of pendulum bob in simulation')
+    parser.add_argument('-NLE', '--natural_length', default=1.0, type=float, help='Natural length of spring in simulation')
+    parser.add_argument('-GA', '--gravitational_acceleration', default=9.81, type=float, help='Gravitational acceleration in simulation')
     parser.add_argument('-TIC', '--train_initial_conds', default=100, type=int, help='Number of initial conditions in the training set')
     parser.add_argument('-VIC', '--val_initial_conds', default=10, type=int, help='Number of initial conditions in the validation set')
     parser.add_argument('-TEIC', '--test_initial_conds', default=10, type=int, help='Number of initial conditions in the test set')
