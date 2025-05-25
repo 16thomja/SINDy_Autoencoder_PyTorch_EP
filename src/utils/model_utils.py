@@ -155,9 +155,14 @@ def get_equation(labels, coefs, lhs=''):
 
 def init_weights(m):
     """
-    Xavier init for linear layers
+    Initialization for different layer types
     """
     if isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight)
         if m.bias is not None:
             m.bias.data.fill_(0.01)
+
+    elif isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        if m.bias is not None:
+            m.bias.data.zero_()

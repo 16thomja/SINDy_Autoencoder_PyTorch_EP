@@ -2,7 +2,6 @@ import numpy as np
 from cmd_line import parse_args
 from src.utils.other import *#load_data, load_model, make_model, get_tb_path, get_checkpoint_path, get_args_path, get_experiments_path
 import torch
-from src.models.SINDyAE_o2 import Net
 from src.dataset.Datasets import *
 import matplotlib.pyplot as plt
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +29,11 @@ def process_frame(x_frame, x_recon_frame, timestep, frames_folder):
 def main():
     args = parse_args()
 
+    if args.model == 'SINDyAE_o2':
+        from src.models.SINDyAE_o2 import Net
+    if args.model == 'SINDyConvAE_o2':
+        from src.models.SINDyConvAE_o2 import Net
+
     cp_path, cp_folder = get_checkpoint_path(args)
     
     frames_folder = cp_folder + "/frames/"
@@ -37,7 +41,7 @@ def main():
     if not os.path.isdir(frames_folder):
         os.system("mkdir -p " + frames_folder)
 
-    train_set, val_set, test_set = load_data(args)
+    _, _, test_set = load_data(args)
 
     torch.cuda.set_device(args.device)
     device = torch.cuda.current_device()
@@ -47,7 +51,7 @@ def main():
     net.load_state_dict(checkpoint['model'])
     net.to(device)
 
-    x = test_set.x[5].view(-1, net.u_dim).type(torch.FloatTensor).to(device)
+    x = test_set.x[np.random.choice(test_set.x.shape[0])].view(-1, net.u_dim).type(torch.FloatTensor).to(device)
 
     with torch.no_grad():
         x_recon = net.decoder(net.encoder(x))
@@ -55,9 +59,9 @@ def main():
     x = x.detach().cpu().numpy()
     x_recon = x_recon.detach().cpu().numpy()
 
-    x_recon_flat = x_recon.flatten().reshape(-1, 1)
+    #x_recon_flat = x_recon.flatten().reshape(-1, 1)
 
-    x_recon = MinMaxScaler(feature_range=(0, 1)).fit_transform(x_recon_flat).reshape(x_recon.shape)
+    #x_recon = MinMaxScaler(feature_range=(0, 1)).fit_transform(x_recon_flat).reshape(x_recon.shape)
 
     with ThreadPoolExecutor(max_workers=32) as executor:
         process_frame_with_folder = partial(process_frame, frames_folder=frames_folder)

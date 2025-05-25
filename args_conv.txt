@@ -1,0 +1,11 @@
+--session_name 05-25-2025_0
+--model SINDyConvAE_o2
+--train_initial_conds 200
+--val_initial_conds 20
+--test_initial_conds 20
+--timesteps 500
+--batch_size 30
+--epochs 500
+--lambda_ddx 0
+--lambda_ddz 0
+--lambda_reg 0

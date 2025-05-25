@@ -39,7 +39,7 @@ class Net(nn.Module):
         batch_size, T, _ = x.shape
         device = self.sindy_coefficients.device
         
-        # reshape data to be (b * t) x u
+        # reshape data to be (b * T) x u
         x = x.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
         dx = dx.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
         ddx = ddx.view(-1, self.u_dim).type(torch.FloatTensor).to(device)
@@ -51,7 +51,7 @@ class Net(nn.Module):
         # propogate known derivatives through encoder to get dz, ddz
         dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)
         
-        # build the SINDy library using the latent vector
+        # build the SINDy library using the latent state and derivative
         theta = sindy_library(z, dz, self.poly_order, device, self.use_inverse, self.use_sine, self.use_cosine, self.include_constant)
         
         # predict the second derivative of z using the library

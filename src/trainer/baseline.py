@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+import numpy as np
 
 def normalize(img):
     img = torch.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
@@ -72,19 +73,20 @@ def test(net, test_loader, test_board, epoch, timesteps, lambdas):
             device = torch.cuda.current_device()
             
             # reshape to (b * t) x u
-            x = x.view(-1, net.u_dim).type(torch.FloatTensor).to(device)
+            x = x.view(-1, net.u_dim).float().to(device)
             
             with torch.no_grad():
                 reconstructed = net.decoder(net.encoder(x))
 
-            input_sample = x[0].view(1, 51, 51)
-            reconstructed_sample = reconstructed[0].view(1, 51, 51)
+            input_sample = x[0].view(1, net.u_w, net.u_w)
+            reconstructed_sample = reconstructed[0].view(1, net.u_w, net.u_w)
 
-            input_sample = normalize(input_sample)
-            reconstructed_sample = normalize(reconstructed_sample)
+            #input_sample = normalize(input_sample)
+            #reconstructed_sample = normalize(reconstructed_sample)
 
             test_board.add_image('Input Sample', input_sample, epoch, dataformats='CHW')
-            test_board.add_image('Reconstructed Sample', reconstructed_sample, epoch, dataformats='CHW')  
+            test_board.add_image('Reconstructed Sample', reconstructed_sample, epoch, dataformats='CHW')
+            test_board.add_histogram('Reconstructed Sample Values', reconstructed_sample, epoch)
     
     num_batches = len(test_loader)
     test_board.add_scalar('L recon', total_recon / num_batches, epoch)
