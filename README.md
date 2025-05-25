@@ -36,7 +36,7 @@ Each script in the training pipeline collects arguments using `cmd_line.py`. Cre
 ## Datasets
 To create the elastic pendulum datasets:
 
-`cat args.txt | xargs python create_elastic_pendulum.py`.
+`cat args.txt | xargs python create_elastic_pendulum.py`
 
 See `cmd_line.py` for the full list of dataset creation args.
 
