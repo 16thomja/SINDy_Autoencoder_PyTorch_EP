@@ -11,7 +11,7 @@ In the latter case, each file with copied code has a reference to which file in 
 </blockquote>
 <br>
 
-This fork is designed exclusively to produce/learn a simulated **elastic pendulum**.
+This fork is designed to exclusively produce/learn a simulated **elastic pendulum**.
 
 Fully-connected (`src/models/SINDyAE_o2.py`) and convolutional (`src/models/SINDyConvAE_o2.py`) models are provided.
 
