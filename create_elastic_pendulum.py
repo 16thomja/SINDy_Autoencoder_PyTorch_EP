@@ -19,7 +19,7 @@ def main():
         g=args.gravitational_acceleration
     )
     val_data = get_elastic_pendulum_data(
-        n_ics=args.train_initial_conds, 
+        n_ics=args.val_initial_conds, 
         timesteps=args.timesteps,
         k=args.spring_constant,
         m=args.mass,
@@ -27,7 +27,7 @@ def main():
         g=args.gravitational_acceleration
     )
     test_data = get_elastic_pendulum_data(
-        n_ics=args.train_initial_conds, 
+        n_ics=args.test_initial_conds, 
         timesteps=args.timesteps,
         k=args.spring_constant,
         m=args.mass,

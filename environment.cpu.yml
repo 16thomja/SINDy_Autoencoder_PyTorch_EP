@@ -1,0 +1,19 @@
+name: sindy
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python>=3.10,<3.13
+  - numpy<2
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - tqdm
+  - ipykernel
+  - jupyterlab
+  - pytorch
+  - tensorboard
+  - ffmpeg
+  - pip
+  - pip:
+      - torch-tb-profiler==0.4.3

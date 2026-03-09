@@ -56,7 +56,7 @@ def generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
         # throw away entire run if any one of these is violated
         if (
             np.any(np.isnan(z_trajectory)) or # no nans
-            np.any(z_trajectory[:, 0] <= 0) or # positive spring length
+            np.any(z_trajectory[:, 0] <= 0) or # no negative spring length
             np.any(np.abs(z_trajectory[:, 0] > quadrant_length - np.sqrt(sigma))) or # keep bob in frame
             np.any(np.abs(z_trajectory[:, 1]) >= np.pi) # no flipovers
         ):
