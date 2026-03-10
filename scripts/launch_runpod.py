@@ -43,23 +43,65 @@ mutation DeployPod($input: PodFindAndDeployOnDemandInput) {
 }
 """
 
-bootstrap_cmd = r"""bash -lc 'set -euo pipefail; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --no-install-recommends bash git curl ca-certificates bzip2; rm -rf /var/lib/apt/lists/*; if [ ! -d /workspace/repo/.git ]; then git clone "$GIT_REPO" /workspace/repo; else git -C /workspace/repo fetch --all --tags; fi; cd /workspace/repo; if [ -n "${GIT_REF:-}" ]; then git checkout "$GIT_REF"; fi; chmod +x scripts/bootstrap_runpod.sh; exec bash scripts/bootstrap_runpod.sh'"""
+bootstrap_cmd = r"""bash -lc 'set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+REPO_DIR=/workspace
+
+echo "[bootstrap] installing system packages"
+apt-get update
+apt-get install -y --no-install-recommends \
+  git \
+  ca-certificates \
+  curl \
+  ffmpeg
+rm -rf /var/lib/apt/lists/*
+
+echo "[bootstrap] python version"
+python --version
+pip --version
+
+echo "[bootstrap] cloning/updating repo"
+if [ ! -d "$REPO_DIR/.git" ]; then
+  git clone "$GIT_REPO" "$REPO_DIR"
+else
+  git -C "$REPO_DIR" fetch --all --tags
+fi
+
+cd "$REPO_DIR"
+
+if [ -n "${GIT_REF:-}" ]; then
+  git checkout "$GIT_REF"
+fi
+
+echo "[bootstrap] upgrading pip tooling"
+python -m pip install --upgrade pip setuptools wheel
+
+echo "[bootstrap] installing project dependencies"
+python -m pip install \
+  "numpy<2" \
+  scipy \
+  scikit-learn \
+  matplotlib \
+  tqdm \
+  tensorboard \
+  torch-tb-profiler==0.4.3
+
+echo "[bootstrap] done"
+tail -f /dev/null'"""
 
 launch_vars = {
     "input": {
         "cloudType": "COMMUNITY",
         "gpuTypeId": "NVIDIA GeForce RTX 3090",
         "gpuCount": 1,
-        "imageName": "nvidia/cuda:12.4.1-devel-ubuntu22.04",
+        "imageName": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
         "name": "SINDy",
         "containerDiskInGb": 20,
         "volumeInGb": 20,
         "volumeMountPath": "/workspace",
-        "ports": "22/tcp,8888/http",
         "env": [
             {"key": "GIT_REPO", "value": "https://github.com/16thomja/SINDy_Autoencoder_PyTorch_EP.git"},
             {"key": "GIT_REF", "value": "main"},
-            {"key": "CONDA_ENV_FILE", "value": "/workspace/repo/environment.cuda.yml"},
         ],
         "dockerArgs": bootstrap_cmd,
     }
@@ -95,6 +137,7 @@ while True:
 
     if runtime is not None:
         print("Pod is ready.")
+        break
 
     print(f"Waiting... desiredStatus={pod.get('desiredStatus')}")
     time.sleep(5)
