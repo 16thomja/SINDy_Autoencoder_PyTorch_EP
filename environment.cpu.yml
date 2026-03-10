@@ -3,7 +3,7 @@ channels:
   - pytorch
   - conda-forge
 dependencies:
-  - python>=3.10,<3.13
+  - python=3.11
   - numpy<2
   - scipy
   - scikit-learn
@@ -11,8 +11,9 @@ dependencies:
   - tqdm
   - ipykernel
   - jupyterlab
-  - pytorch
+  - pytorch=2.4.*
   - tensorboard
+  - python-dotenv
   - ffmpeg
   - pip
   - pip:
