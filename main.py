@@ -24,10 +24,7 @@ def main():
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
-    # boards
     train_name, test_name = get_tb_path(args)
-    train_board = SummaryWriter(train_name, purge_step=True)
-    test_board = SummaryWriter(test_name, purge_step=True)
 
     # device
     torch.cuda.set_device(args.device)
@@ -61,6 +58,10 @@ def main():
         net, optim, scheduler, initial_e = load_model(net, cp_path, device, optim, scheduler)
     else:  # init network
         net.apply(init_weights)
+
+    # boards
+    train_board = SummaryWriter(train_name, purge_step=initial_e)
+    test_board = SummaryWriter(test_name, purge_step=initial_e)
 
     # lambdas for loss function
     lambdas = args.lambda_ddx, args.lambda_ddz, args.lambda_reg
