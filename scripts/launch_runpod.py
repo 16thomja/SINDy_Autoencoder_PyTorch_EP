@@ -99,6 +99,7 @@ launch_vars = {
         "containerDiskInGb": 20,
         "volumeInGb": 20,
         "volumeMountPath": "/workspace",
+        "ports": "6006/http",
         "env": [
             {"key": "GIT_REPO", "value": "https://github.com/16thomja/SINDy_Autoencoder_PyTorch_EP.git"},
             {"key": "GIT_REF", "value": "main"},

@@ -10,3 +10,5 @@
 --lambda_ddz 0
 --lambda_reg 0
 --launch_tensorboard 1
+--tensorboard_host 0.0.0.0
+--tensorboard_port 6006
