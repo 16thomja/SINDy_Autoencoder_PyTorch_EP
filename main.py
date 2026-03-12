@@ -6,6 +6,9 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import os
 import json
+import subprocess
+import atexit
+from pathlib import Path
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 from cmd_line import parse_args
 from src.trainer.baseline import train, test
@@ -25,6 +28,31 @@ def main():
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
     train_name, test_name = get_tb_path(args)
+    tb_root = str(Path(train_name).parent)
+    os.makedirs(tb_root, exist_ok=True)
+
+    tb_proc = None
+    if args.launch_tensorboard == 1:
+        try:
+            cmd = [
+                "tensorboard",
+                "--logdir",
+                tb_root,
+                "--host",
+                args.tensorboard_host,
+                "--port",
+                str(args.tensorboard_port),
+            ]
+            tb_proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+            )
+            atexit.register(lambda: tb_proc.terminate() if tb_proc.poll() is None else None)
+            print(f"TensorBoard running (logdir={tb_root})")
+            print(f"  URL: http://{args.tensorboard_host}:{args.tensorboard_port}")
+        except FileNotFoundError:
+            print("WARNING: `tensorboard` not found on PATH; skipping auto-launch.")
 
     # device
     torch.cuda.set_device(args.device)

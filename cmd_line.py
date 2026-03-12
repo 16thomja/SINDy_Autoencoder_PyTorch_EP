@@ -55,4 +55,9 @@ def parse_args():
     parser.add_argument('-D', '--device', default=0, type=int, help='Which GPU to use')
     parser.add_argument('-PF', '--print_folder', default=1, type=int, help='Iff true, prints the folder for different logs')
 
-    return parser.parse_args() 
+    # tensorboard
+    parser.add_argument('--launch_tensorboard', default=0, type=int, help='If 1, launches TensorBoard as a background process')
+    parser.add_argument('--tensorboard_host', default='127.0.0.1', type=str, help='TensorBoard host (use 0.0.0.0 for remote access)')
+    parser.add_argument('--tensorboard_port', default=6006, type=int, help='TensorBoard port')
+
+    return parser.parse_args()

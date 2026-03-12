@@ -137,6 +137,9 @@ while True:
 
     if runtime is not None:
         print("Pod is ready.")
+        print("TensorBoard tunnel:")
+        print("  ssh -L 6006:127.0.0.1:6006 <pod_ip> <ssh_key>")
+        print("  open http://localhost:6006")
         break
 
     print(f"Waiting... desiredStatus={pod.get('desiredStatus')}")

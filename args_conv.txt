@@ -9,3 +9,4 @@
 --lambda_ddx 0
 --lambda_ddz 0
 --lambda_reg 0
+--launch_tensorboard 1
