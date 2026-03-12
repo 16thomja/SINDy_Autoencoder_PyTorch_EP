@@ -2,8 +2,11 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 
-def get_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
-    t,x,dx,ddx,z = generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g)
+def get_elastic_pendulum_data(n_ics, timesteps, k, m, L, g, *, rng=None, metadata=None):
+    if rng is None:
+        rng = np.random.default_rng()
+
+    t, x, dx, ddx, z = generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g, rng=rng)
     data = {}
     data['t'] = t
     data['x'] = x.reshape((n_ics*t.size, -1))
@@ -12,10 +15,13 @@ def get_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
     data['z'] = z.reshape((n_ics*t.size, -1))[:, 0:2]
     data['dz'] = z.reshape((n_ics*t.size, -1))[:, 2:4]
 
+    if metadata:
+        data.update(metadata)
+
     return data
 
 
-def generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
+def generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g, *, rng):
     def f(t, z):
         r, theta, r_dot, theta_dot = z
         r_ddot = r * theta_dot**2 + (k / m) * (L - r) + g * np.cos(theta)
@@ -40,12 +46,14 @@ def generate_elastic_pendulum_data(n_ics, timesteps, k, m, L, g):
 
     i = 0
     while i < n_ics:
-        z0 = np.array([
-            (r_range[1] - r_range[0]) * np.random.rand() + r_range[0],
-            (theta_range[1] - theta_range[0]) * np.random.rand() + theta_range[0],
-            (r_dot_range[1] - r_dot_range[0]) * np.random.rand() + r_dot_range[0],
-            (theta_dot_range[1] - theta_dot_range[0]) * np.random.rand() + theta_dot_range[0]
-        ])
+        z0 = np.array(
+            [
+                rng.uniform(r_range[0], r_range[1]),
+                rng.uniform(theta_range[0], theta_range[1]),
+                rng.uniform(r_dot_range[0], r_dot_range[1]),
+                rng.uniform(theta_dot_range[0], theta_dot_range[1]),
+            ]
+        )
 
         solution = solve_ivp(
             f, t_span, z0, method='Radau', t_eval=t_eval, args=()

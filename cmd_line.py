@@ -49,6 +49,7 @@ def parse_args():
     parser.add_argument('-VIC', '--val_initial_conds', default=10, type=int, help='Number of initial conditions in the validation set')
     parser.add_argument('-TEIC', '--test_initial_conds', default=10, type=int, help='Number of initial conditions in the test set')
     parser.add_argument('-TS', '--timesteps', default=500, type=int, help='Number of timesteps per trajectory')
+    parser.add_argument('-DS', '--dataset_seed', default=None, type=int, help='Seed for dataset generation')
 
     # other
     parser.add_argument('-LCP', '--load_cp', default=0, type=int, help='If 1, loads the model from the checkpoint. If 0, does not')
