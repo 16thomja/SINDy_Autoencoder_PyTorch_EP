@@ -69,7 +69,7 @@ def test(net, device, test_loader, test_board, epoch, timesteps, lambdas):
     total_ddx = 0
     total_ddz = 0
     total_reg = 0
-    
+
     for batch_idx, (x, dx, ddx, dz) in enumerate(tqdm(test_loader, desc="Testing", total=len(test_loader), dynamic_ncols=True)):
         # reshape data to (b * T) x u
         x = x.view(-1, net.u_dim).to(device, non_blocking=True)
@@ -84,11 +84,10 @@ def test(net, device, test_loader, test_board, epoch, timesteps, lambdas):
 
         # log a visual sample from first batch to TensorBoard
         if batch_idx == 0:
-            batch_size, T, _ = x.shape
             device = torch.cuda.current_device()
             
             # reshape to (b * t) x u
-            x = x.view(-1, net.u_dim).float().to(device)
+            x = x.view(-1, net.u_dim).to(device, non_blocking=True)
             
             with torch.no_grad():
                 reconstructed = net.decoder(net.encoder(x))
