@@ -24,8 +24,8 @@ def main():
     train_set, test_set, _ = load_data(args)
 
     # dataloaders
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
-    test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=3, persistent_workers=True, pin_memory=True)
+    test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, num_workers=3, persistent_workers=True, pin_memory=True)
 
     train_name, test_name = get_tb_path(args)
     tb_root = str(Path(train_name).parent)
@@ -97,11 +97,11 @@ def main():
     # for each epoch
     for epoch in tqdm(range(args.epochs), desc="Epoch", total=args.epochs, dynamic_ncols=True):
         # train
-        train(net, train_loader, train_board, optim, epoch + initial_e, args.clip, lambdas)
+        train(net, device, train_loader, train_board, optim, epoch + initial_e, args.clip, lambdas)
 
         # test
         if (epoch + 1) % args.test_interval == 0:
-            test(net, test_loader, test_board, epoch + initial_e, args.timesteps, lambdas)
+            test(net, device, test_loader, test_board, epoch + initial_e, args.timesteps, lambdas)
         
         # step on learning rate scheduler
         scheduler.step()

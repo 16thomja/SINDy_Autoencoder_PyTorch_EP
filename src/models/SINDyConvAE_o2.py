@@ -74,11 +74,6 @@ class Net(nn.Module):
     def forward(self, x, dx, ddx, lambdas):
         device = self.sindy_coefficients.device
 
-        # reshape data to be (b * T) x u
-        x = x.view(-1, self.u_dim).float().to(device)
-        dx = dx.view(-1, self.u_dim).float().to(device)
-        ddx = ddx.view(-1, self.u_dim).float().to(device)
-
         """
         # propogate state + derivatives through encoder to get latent state + derivatives
         z, dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)

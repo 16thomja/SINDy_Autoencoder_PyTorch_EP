@@ -15,7 +15,7 @@ def normalize(img):
         img = torch.zeros_like(img)
     return img
 
-def train(net, train_loader, train_board, optim, epoch, clip, lambdas):
+def train(net, device, train_loader, train_board, optim, epoch, clip, lambdas):
     net.train()
 
     # losses
@@ -26,6 +26,11 @@ def train(net, train_loader, train_board, optim, epoch, clip, lambdas):
 
     # for each batch
     for x, dx, ddx, dz in tqdm(train_loader, desc="Training", total=len(train_loader), dynamic_ncols=True):
+        # reshape data to (b * T) x u
+        x = x.view(-1, net.u_dim).to(device, non_blocking=True)
+        dx = dx.view(-1, net.u_dim).to(device, non_blocking=True)
+        ddx = ddx.view(-1, net.u_dim).to(device, non_blocking=True)
+
         l_recon, l_ddx, l_ddz, l_reg = net(x, dx, ddx, lambdas)
         epoch_l_recon += l_recon.item()
         epoch_l_ddx += l_ddx.item()
@@ -57,10 +62,20 @@ def train(net, train_loader, train_board, optim, epoch, clip, lambdas):
     train_board.add_scalar('L regularization', epoch_l_reg, epoch)
 
 
-def test(net, test_loader, test_board, epoch, timesteps, lambdas):
+def test(net, device, test_loader, test_board, epoch, timesteps, lambdas):
     net.eval()
-    total_recon, total_ddx, total_ddz, total_reg = 0, 0, 0, 0
+
+    total_recon = 0
+    total_ddx = 0
+    total_ddz = 0
+    total_reg = 0
+    
     for batch_idx, (x, dx, ddx, dz) in enumerate(tqdm(test_loader, desc="Testing", total=len(test_loader), dynamic_ncols=True)):
+        # reshape data to (b * T) x u
+        x = x.view(-1, net.u_dim).to(device, non_blocking=True)
+        dx = dx.view(-1, net.u_dim).to(device, non_blocking=True)
+        ddx = ddx.view(-1, net.u_dim).to(device, non_blocking=True)
+
         l_recon, l_ddx, l_ddz, l_reg = net(x, dx, ddx, lambdas)
         total_recon += l_recon.item()
         total_ddx += l_ddx.item()
