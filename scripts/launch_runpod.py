@@ -70,6 +70,7 @@ REPO_DIR=/workspace
 echo "[bootstrap] installing system packages"
 apt-get update
 apt-get install -y --no-install-recommends \
+  nano \
   git \
   ca-certificates \
   curl \
