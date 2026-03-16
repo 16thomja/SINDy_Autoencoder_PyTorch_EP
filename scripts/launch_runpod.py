@@ -215,8 +215,9 @@ while True:
             public_ssh_port = ssh_mapping["publicPort"]
             print(f"Public IP: {public_ip}")
             print(f"Public SSH port: {public_ssh_port}")
-            print(f'SSH: ssh root@{public_ip} -p {public_ssh_port} -i ~/.ssh/id_ed25519')
+            print(f'SSH: ssh root@{public_ip} -p {public_ssh_port} -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o LogLevel=QUIET')
 
+            print("")
             if tb_mapping:
                 print(f'TensorBoard proxy/direct mapping: http://{tb_mapping["ip"]}:{tb_mapping["publicPort"]}')
             else:

@@ -75,7 +75,7 @@ EOF
   exit 1
 fi
 
-RSYNC_SSH="ssh -p $PUBLIC_SSH_PORT -i $SSH_KEY_PATH -o StrictHostKeyChecking=accept-new"
+RSYNC_SSH="ssh -p $PUBLIC_SSH_PORT -i $SSH_KEY_PATH -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o LogLevel=QUIET"
 
 for d in experiments tb_runs trained_models; do
   echo "[sync] syncing $d/"
