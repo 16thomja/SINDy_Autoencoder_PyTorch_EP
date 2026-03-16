@@ -55,8 +55,11 @@ def main():
             print("WARNING: `tensorboard` not found on PATH; skipping auto-launch.")
 
     # device
-    torch.cuda.set_device(args.device)
-    device = torch.cuda.current_device()
+    if torch.cuda.is_available():
+        device = torch.device(f"cuda:{args.device}")
+        torch.cuda.set_device(device)
+    else:
+        device = torch.device("cpu")
 
     # checkpoint, args, experiments path
     cp_path, cp_folder = get_checkpoint_path(args)

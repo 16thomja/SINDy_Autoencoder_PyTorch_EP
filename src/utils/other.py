@@ -10,7 +10,7 @@ def load_data(args):
     return train_set, val_set, test_set
 
 def load_model(net, cp_path, device, optim=None, scheduler=None):
-    checkpoint = torch.load(cp_path, map_location="cuda:" + str(device))
+    checkpoint = torch.load(cp_path, map_location=device)
     net.load_state_dict(checkpoint['model'])
     net.to(device)
     if optim is not None:
