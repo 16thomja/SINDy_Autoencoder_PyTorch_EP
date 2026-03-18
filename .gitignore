@@ -17,3 +17,5 @@ trained_models/*
 !trained_models/README.md
 
 __pycache__/
+
+.DS_Store
