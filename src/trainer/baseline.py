@@ -83,10 +83,8 @@ def test(net, device, test_loader, test_board, epoch, timesteps, lambdas):
         total_reg += l_reg.item()
 
         # log a visual sample from first batch to TensorBoard
-        if batch_idx == 0:
-            device = torch.cuda.current_device()
-            
-            # reshape to (b * t) x u
+        if batch_idx == 0:            
+            # reshape to (b * T) x u
             x = x.view(-1, net.u_dim).to(device, non_blocking=True)
             
             with torch.no_grad():

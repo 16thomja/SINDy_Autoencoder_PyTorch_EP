@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.autograd.functional import jvp
 import numpy as np
 from src.utils.model_utils import library_size, sindy_library
@@ -30,46 +29,34 @@ class Net(nn.Module):
 
         self.u_w = int(np.sqrt(self.u_dim))
 
-        # encoder layers
-        self.enc1 = nn.Conv2d(1, 16, kernel_size=5, stride=2, padding=2) # 51 -> 26
-        self.enc2 = nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2) # 26 -> 13
-        self.enc3 = nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2) # 13 -> 7
-        self.fc_enc = nn.Linear(64 * 7 * 7, self.z_dim) # flatten -> fc -> z
+        self.encoder = nn.Sequential(
+            nn.Unflatten(dim=1, unflattened_size=(1, self.u_w, self.u_w)),
+            nn.Conv2d(1, 16, kernel_size=5, stride=2, padding=2),   # 51 -> 26
+            nn.ELU(),
+            nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2),  # 26 -> 13
+            nn.ELU(),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2),  # 13 -> 7
+            nn.ELU(),
+            nn.Flatten(start_dim=1),
+            nn.Linear(64 * 7 * 7, self.z_dim)
+        )
 
-        # decoder layers - mirror of encoder
-        self.fc_dec = nn.Linear(self.z_dim, 64 * 7 * 7)
-        self.dec1 = nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2, output_padding=0)
-        self.dec2 = nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2, output_padding=1)
-        self.dec3 = nn.ConvTranspose2d(16, 1, kernel_size=5, stride=2, padding=2, output_padding=0)
+        self.decoder = nn.Sequential(
+            nn.Linear(self.z_dim, 64 * 7 * 7),
+            nn.Unflatten(dim=1, unflattened_size=(64, 7, 7)),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2, output_padding=0),
+            nn.ELU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.ELU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=5, stride=2, padding=2, output_padding=0),
+            nn.Flatten(start_dim=1)
+        )
 
         self.sindy_coefficients = nn.Parameter(torch.zeros(self.library_dim, self.z_dim, requires_grad=True))
         nn.init.xavier_normal_(self.sindy_coefficients)
         self.sequential_threshold = args.sequential_threshold
         self.threshold_mask = nn.Parameter(torch.ones_like(self.sindy_coefficients), requires_grad=False)
 
-
-    def encoder(self, x):
-        # (b * T, u_dim) -> (b * T, 1, u_w, u_w)
-        x = x.view(-1, 1, self.u_w, self.u_w)
-        x = F.elu(self.enc1(x))
-        x = F.elu(self.enc2(x))
-        x = F.elu(self.enc3(x))
-        x = x.view(x.size(0), -1) # flatten
-        z = self.fc_enc(x)
-
-        return z
-
-
-    def decoder(self, z):
-        x = self.fc_dec(z)
-        x = x.view(-1, 64, 7, 7) # unflatten
-        x = F.elu(self.dec1(x))
-        x = F.elu(self.dec2(x))
-        #x = torch.sigmoid(self.dec3(x))
-        x = self.dec3(x)
-        x = x.view(-1, self.u_dim)
-
-        return x
 
     def forward(self, x, dx, ddx, lambdas):
         device = self.sindy_coefficients.device
