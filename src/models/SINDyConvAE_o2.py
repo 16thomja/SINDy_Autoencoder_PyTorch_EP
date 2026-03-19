@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.autograd.functional import jvp
+import torch.nn.functional as F
 import numpy as np
 from src.utils.model_utils import library_size, sindy_library
 
@@ -61,9 +61,12 @@ class Net(nn.Module):
     def forward(self, x, dx, ddx, lambdas):
         device = self.sindy_coefficients.device
 
-        """
-        # propogate state + derivatives through encoder to get latent state + derivatives
-        z, dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)
+        # get latent state and reconstructed full state
+        z = self.encoder(x)
+        x_recon = self.decoder(z)
+
+        # propagate full state derivatives through encoder to get latent derivatives
+        dz, ddz = self.get_derivative_order2(x, dx, ddx, self.encoder)
 
         # build the SINDy library using the latent state + derivative
         theta = sindy_library(
@@ -80,14 +83,13 @@ class Net(nn.Module):
         # predict the second derivative of z using the library
         ddz_pred = self.predict(theta)
 
-        # propogate predicted latent second derivative through decoder to predict full space dynamics
-        x_recon, _, ddx_pred = self.get_derivative_order2(z, dz, ddz_pred, self.decoder)
+        # propagate predicted latent second derivative through decoder to get SINDy prediction of full space dynamics
+        _, ddx_pred = self.get_derivative_order2(z, dz, ddz_pred, self.decoder)
 
         # calculate loss
         loss = self.loss_func(x, x_recon, ddx_pred, ddz_pred, ddx, ddz, lambdas)
-        """
 
-        x_recon = self.decoder(self.encoder(x))
+        """
         zero = torch.tensor(0., device=device)
 
         alpha = 5.0
@@ -95,6 +97,7 @@ class Net(nn.Module):
         l_recon = ((mask * (x_recon - x))**2).mean()
 
         loss = (l_recon, zero, zero, zero)
+        """
 
         return loss
     
@@ -107,16 +110,51 @@ class Net(nn.Module):
         return torch.matmul(theta, masked_coeffs).squeeze() # (b x T) x z
     
 
-    def get_derivative_order2(self, x, dx, ddx, fn):
-        # x:         (N, D_in)
-        # dx:        (N, D_in)  = ∂x/∂t
-        # ddx:       (N, D_in)  = ∂²x/∂t²
-        # fn:        Callable that maps x -> y (N, D_out)
-        x = x.requires_grad_(True) # track gradient wrt x
-        y, dy = jvp(fn, (x,), (dx,), create_graph=True) # apply gradient to x, dx
-        _, ddy = jvp(fn, (x,), (ddx,), create_graph=True) # apply gradient to ddx
-        
-        return y, dy, ddy
+    def get_derivative_order2(self, x, dx, ddx, net):
+        v, dv, ddv = x, dx, ddx
+        for layer in net:
+            if isinstance(layer, (nn.Flatten, nn.Unflatten)):
+                v, dv, ddv = layer(v), layer(dv), layer(ddv)
+
+            elif isinstance(layer, nn.Linear):
+                v = layer(v)
+                dv = F.linear(dv, layer.weight, bias=None)
+                ddv = F.linear(ddv, layer.weight, bias=None)
+            
+            elif isinstance(layer, nn.Conv2d):
+                v = layer(v)
+                dv = F.conv2d(dv, layer.weight, bias=None,
+                              stride=layer.stride, padding=layer.padding,
+                              dilation=layer.dilation, groups=layer.groups)
+                ddv = F.conv2d(ddv, layer.weight, bias=None,
+                              stride=layer.stride, padding=layer.padding,
+                              dilation=layer.dilation, groups=layer.groups)
+                
+            elif isinstance(layer, nn.ConvTranspose2d):
+                v = layer(v)
+                dv = F.conv_transpose2d(dv, layer.weight, bias=None,
+                              stride=layer.stride, padding=layer.padding,
+                              output_padding=layer.output_padding,
+                              dilation=layer.dilation, groups=layer.groups)
+                ddv = F.conv_transpose2d(ddv, layer.weight, bias=None,
+                              stride=layer.stride, padding=layer.padding,
+                              output_padding=layer.output_padding,
+                              dilation=layer.dilation, groups=layer.groups)
+
+            elif isinstance(layer, nn.ELU):
+                phi = F.elu(v, alpha=layer.alpha)
+                dphi = torch.where(v > 0, torch.ones_like(v), layer.alpha * torch.exp(v))
+                ddphi = torch.where(v > 0, torch.zeros_like(v), layer.alpha * torch.exp(v))
+
+                # note order: ddv uses dv from prev layer before dv is updated
+                ddv = ddphi * (dv ** 2) + dphi * ddv
+                dv = dphi * dv
+                v = phi
+
+            else:
+                raise TypeError(f"Unsupported layer type: {type(layer)}")
+            
+        return dv, ddv
 
 
     def loss_func(self, x, x_recon, ddx_pred, ddz_pred, ddx, ddz, lambdas):
