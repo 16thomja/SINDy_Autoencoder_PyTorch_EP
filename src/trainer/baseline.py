@@ -1,19 +1,5 @@
 import torch
 from tqdm import tqdm
-import numpy as np
-
-def normalize(img):
-    img = torch.nan_to_num(img, nan=0.0, posinf=0.0, neginf=0.0)
-
-    mn = img.min()
-    mx = img.max()
-    if mx > mn:
-        # Normal case: spread into [0,1]
-        img = (img - mn) / (mx - mn)
-    else:
-        # All pixels identical: just make a zero image
-        img = torch.zeros_like(img)
-    return img
 
 def train(net, device, train_loader, train_board, optim, epoch, clip, lambdas):
     net.train()
@@ -31,6 +17,9 @@ def train(net, device, train_loader, train_board, optim, epoch, clip, lambdas):
         dx = dx.view(-1, net.u_dim).to(device, non_blocking=True)
         ddx = ddx.view(-1, net.u_dim).to(device, non_blocking=True)
 
+        # reset gradients
+        optim.zero_grad(set_to_none=True)
+
         l_recon, l_ddx, l_ddz, l_reg = net(x, dx, ddx, lambdas)
         epoch_l_recon += l_recon.item()
         epoch_l_ddx += l_ddx.item()
@@ -39,14 +28,16 @@ def train(net, device, train_loader, train_board, optim, epoch, clip, lambdas):
 
         # backprop
         batch_loss = l_recon + l_ddx + l_ddz + l_reg
-        optim.zero_grad()
         batch_loss.backward()
+
         if clip is not None:
             torch.nn.utils.clip_grad_norm_(net.parameters(), clip)
+        
         optim.step()
 
-        # update the mask
-        net.threshold_mask[torch.abs(net.sindy_coefficients) < net.sequential_threshold] = 0
+        with torch.no_grad():
+            # update the mask
+            net.threshold_mask[torch.abs(net.sindy_coefficients) < net.sequential_threshold] = 0
     
     # average
     num_batches = len(train_loader)
@@ -70,36 +61,30 @@ def test(net, device, test_loader, test_board, epoch, timesteps, lambdas):
     total_ddz = 0
     total_reg = 0
 
-    for batch_idx, (x, dx, ddx, dz) in enumerate(tqdm(test_loader, desc="Testing", total=len(test_loader), dynamic_ncols=True)):
-        # reshape data to (b * T) x u
-        x = x.view(-1, net.u_dim).to(device, non_blocking=True)
-        dx = dx.view(-1, net.u_dim).to(device, non_blocking=True)
-        ddx = ddx.view(-1, net.u_dim).to(device, non_blocking=True)
-
-        l_recon, l_ddx, l_ddz, l_reg = net(x, dx, ddx, lambdas)
-        total_recon += l_recon.item()
-        total_ddx += l_ddx.item()
-        total_ddz += l_ddz.item()
-        total_reg += l_reg.item()
-
-        # log a visual sample from first batch to TensorBoard
-        if batch_idx == 0:            
-            # reshape to (b * T) x u
+    with torch.inference_mode():
+        for batch_idx, (x, dx, ddx, dz) in enumerate(tqdm(test_loader, desc="Testing", total=len(test_loader), dynamic_ncols=True)):
+            # reshape data to (b * T) x u
             x = x.view(-1, net.u_dim).to(device, non_blocking=True)
-            
-            with torch.no_grad():
+            dx = dx.view(-1, net.u_dim).to(device, non_blocking=True)
+            ddx = ddx.view(-1, net.u_dim).to(device, non_blocking=True)
+
+            l_recon, l_ddx, l_ddz, l_reg = net(x, dx, ddx, lambdas)
+            total_recon += l_recon.item()
+            total_ddx += l_ddx.item()
+            total_ddz += l_ddz.item()
+            total_reg += l_reg.item()
+
+            # log a visual sample from first batch to TensorBoard
+            if batch_idx == 0:            
                 reconstructed = net.decoder(net.encoder(x))
 
-            input_sample = x[0].view(1, net.u_w, net.u_w)
-            reconstructed_sample = reconstructed[0].view(1, net.u_w, net.u_w)
+                input_sample = x[0].view(1, net.u_w, net.u_w).detach().cpu()
+                reconstructed_sample = reconstructed[0].view(1, net.u_w, net.u_w).detach().cpu()
 
-            #input_sample = normalize(input_sample)
-            #reconstructed_sample = normalize(reconstructed_sample)
-
-            test_board.add_image('Input Sample', input_sample, epoch, dataformats='CHW')
-            test_board.add_image('Reconstructed Sample', reconstructed_sample, epoch, dataformats='CHW')
-            test_board.add_histogram('Reconstructed Sample Values', reconstructed_sample, epoch)
-    
+                test_board.add_image('Input Sample', input_sample, epoch, dataformats='CHW')
+                test_board.add_image('Reconstructed Sample', reconstructed_sample, epoch, dataformats='CHW')
+                test_board.add_histogram('Reconstructed Sample Values', reconstructed_sample, epoch)
+        
     num_batches = len(test_loader)
     test_board.add_scalar('L recon', total_recon / num_batches, epoch)
     test_board.add_scalar('L ddx', total_ddx / num_batches, epoch)
