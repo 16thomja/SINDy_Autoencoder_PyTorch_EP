@@ -53,7 +53,7 @@ class Net(nn.Module):
         )
 
         self.sindy_coefficients = nn.Parameter(torch.zeros(self.library_dim, self.z_dim, requires_grad=True))
-        nn.init.xavier_normal_(self.sindy_coefficients)
+        nn.init.normal_(self.sindy_coefficients, mean=0.0, std=1e-4)
         self.sequential_threshold = args.sequential_threshold
         self.threshold_mask = nn.Parameter(torch.ones_like(self.sindy_coefficients), requires_grad=False)
 
